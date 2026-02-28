@@ -10,5 +10,4 @@ public enum Permission {
     VIEW_PARTICIPANTS,     // Voir qui est dans la réunion
     MUTE_PARTICIPANT, // muter un participant
     ADD_PARTICIPANT,
-    DELETE_PARTICIPANT,
 }

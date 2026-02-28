@@ -2,7 +2,7 @@ package core.generics;
 import java.util.*;
 
 
-public class DBRepository<T> {
+public class DBRepository<T> implements IRepository<T> {
 
     private final Map<String, T> storage = new HashMap<>();
 

@@ -3,7 +3,7 @@ package core.services;
 import core.enums.Permission;
 import core.enums.ReunionType;
 import core.enums.Role;
-import core.generics.DBRepository;
+import core.generics.IRepository;
 import core.interfaces.IMeetingService;
 import core.models.Reunion;
 import core.models.User;
@@ -16,9 +16,9 @@ import java.util.UUID;
 
 public class ReunionService implements IMeetingService {
 
-    private final DBRepository<Reunion> repository;
+    private final IRepository<Reunion> repository;
 
-    public ReunionService(DBRepository<Reunion> repository) {
+    public ReunionService(IRepository<Reunion> repository) {
         this.repository = repository;
     }
 

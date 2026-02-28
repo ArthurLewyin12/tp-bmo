@@ -1,6 +1,6 @@
 package core.services;
 
-import core.generics.DBRepository;
+import core.generics.IRepository;
 import core.interfaces.IUserService;
 import core.models.Reunion;
 import core.models.User;
@@ -12,9 +12,9 @@ import java.util.UUID;
 
 public class UserService implements IUserService {
 
-    private final DBRepository<User> repository;
+    private final IRepository<User> repository;
 
-    public UserService(DBRepository<User> repository) {
+    public UserService(IRepository<User> repository) {
         this.repository = repository;
     }
 
