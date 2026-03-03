@@ -1,6 +1,7 @@
 package network.session;
 
 import core.models.Reunion;
+import core.models.User;
 import network.protocol.Message;
 
 import java.util.List;
@@ -26,6 +27,14 @@ public class SessionManager {
         sessions.stream()
                 .filter(s -> reunion.equals(s.getCurrentMeeting()))
                 .forEach(s -> s.send(message));
+    }
+
+    // Envoie un message à un utilisateur connecté spécifique (hors réunion)
+    public void sendToUser(User user, Message message) {
+        sessions.stream()
+                .filter(s -> user.equals(s.getUser()))
+                .findFirst()
+                .ifPresent(s -> s.send(message));
     }
 
     // Envoie un message à tous les clients connectés

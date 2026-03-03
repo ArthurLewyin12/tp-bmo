@@ -39,6 +39,7 @@ public class MessageDispatcher {
             case CREATE_MEETING -> handleCreateMeeting(session, msg);
             case GET_MEETINGS        -> handleGetMeetings(session);
             case GET_MEETING_DETAILS -> handleGetMeetingDetails(session, msg);
+            case GET_PARTICIPANTS    -> handleGetParticipants(session, msg);
             case UPDATE_MEETING      -> handleUpdateMeeting(session, msg);
             case ADD_ALLOWED_USER    -> handleAddAllowedUser(session, msg);
             case JOIN_MEETING        -> handleJoinMeeting(session, msg);
@@ -55,7 +56,7 @@ public class MessageDispatcher {
         }
     }
 
-    // ==================== AUTH ====================
+    // AUTH
 
     // REGISTER|firstName|lastName|email|phone|password
     private void handleRegister(ClientSession session, Message msg) {
@@ -83,7 +84,7 @@ public class MessageDispatcher {
                 );
     }
 
-    // ==================== RÉUNIONS ====================
+    // RÉUNIONS
 
     // CREATE_MEETING|name|topic|durationMinutes|type|agenda
     private void handleCreateMeeting(ClientSession session, Message msg) {
@@ -137,6 +138,34 @@ public class MessageDispatcher {
                 );
     }
 
+    // GET_PARTICIPANTS|meetingId
+    // Réponse : OK|GET_PARTICIPANTS|id,fn,ln;...|fn ln|id,fn,ln;...
+    private void handleGetParticipants(ClientSession session, Message msg) {
+        if (!checkLogin(session)) return;
+        reunionService.getMeetingById(msg.getParam(0))
+                .ifPresentOrElse(
+                        reunion -> {
+                            String participants = reunion.getParticipants().isEmpty() ? "AUCUN" :
+                                    reunion.getParticipants().stream()
+                                            .map(u -> u.getId() + "," + u.getFirstName() + "," + u.getLastName())
+                                            .collect(Collectors.joining(";"));
+
+                            User speaker = reunion.getCurrentSpeaker();
+                            String currentSpeaker = (speaker == null) ? "AUCUN" :
+                                    speaker.getFirstName() + " " + speaker.getLastName();
+
+                            String queue = reunion.getSpeechQueue().isEmpty() ? "AUCUNE" :
+                                    reunion.getSpeechQueue().stream()
+                                            .map(u -> u.getId() + "," + u.getFirstName() + "," + u.getLastName())
+                                            .collect(Collectors.joining(";"));
+
+                            session.send(new Message(Action.OK, "GET_PARTICIPANTS",
+                                    participants, currentSpeaker, queue));
+                        },
+                        () -> session.send(new Message(Action.ERROR, "GET_PARTICIPANTS", "Réunion introuvable"))
+                );
+    }
+
     // UPDATE_MEETING|meetingId|newTopic|newDurationMinutes|newAgenda
     private void handleUpdateMeeting(ClientSession session, Message msg) {
         if (!checkLogin(session)) return;
@@ -166,6 +195,10 @@ public class MessageDispatcher {
         reunionService.getMeetingById(msg.getParam(0))
                 .ifPresentOrElse(
                         reunion -> {
+                            if (reunion.getType() != ReunionType.PRIVATE) {
+                                session.send(new Message(Action.ERROR, "ADD_ALLOWED_USER", "Cette action est réservée aux réunions privées"));
+                                return;
+                            }
                             if (!session.getUser().equals(reunion.getOrganizer())) {
                                 session.send(new Message(Action.ERROR, "ADD_ALLOWED_USER", "Seul l'organisateur peut inviter des membres"));
                                 return;
@@ -178,6 +211,13 @@ public class MessageDispatcher {
                                                 }
                                                 session.send(new Message(Action.OK, "ADD_ALLOWED_USER",
                                                         user.getFirstName(), user.getLastName()));
+                                                // Notifier l'invité en temps réel s'il est connecté
+                                                sessionManager.sendToUser(user, new Message(Action.BROADCAST,
+                                                        "MEETING_INVITATION",
+                                                        reunion.getId(),
+                                                        reunion.getName(),
+                                                        reunion.getOrganizer().getFirstName() + " " + reunion.getOrganizer().getLastName()
+                                                ));
                                             },
                                             () -> session.send(new Message(Action.ERROR, "ADD_ALLOWED_USER", "Utilisateur introuvable"))
                                     );
@@ -197,7 +237,8 @@ public class MessageDispatcher {
                                 session.setCurrentMeeting(reunion);
                                 session.send(new Message(Action.OK, "JOIN_MEETING", reunion.getId(), reunion.getName()));
                                 sessionManager.broadcast(reunion, new Message(Action.BROADCAST,
-                                        "PARTICIPANT_JOINED", session.getUser().getFirstName(), session.getUser().getLastName()));
+                                        "PARTICIPANT_JOINED", session.getUser().getId(),
+                                        session.getUser().getFirstName(), session.getUser().getLastName()));
                             } catch (IllegalStateException e) {
                                 session.send(new Message(Action.ERROR, "JOIN_MEETING", e.getMessage()));
                             }
@@ -324,6 +365,10 @@ public class MessageDispatcher {
                             try {
                                 reunionService.requestToSpeak(reunion, session.getUser());
                                 session.send(new Message(Action.OK, "REQUEST_SPEAK", "Demande enregistrée"));
+                                // Notifie tous les participants qu'une demande de parole a été faite
+                                sessionManager.broadcast(reunion, new Message(Action.BROADCAST,
+                                        "SPEECH_REQUESTED", session.getUser().getId(),
+                                        session.getUser().getFirstName(), session.getUser().getLastName()));
                                 // Si DEMOCRATIC et parole accordée directement
                                 if (session.getUser().equals(reunion.getCurrentSpeaker())) {
                                     sessionManager.broadcast(reunion, new Message(Action.BROADCAST,
@@ -374,6 +419,14 @@ public class MessageDispatcher {
                                 chatMessageService.save(reunion, session.getUser(), message);
                                 sessionManager.broadcast(reunion, new Message(Action.BROADCAST,
                                         "SPEAK", session.getUser().getFirstName(), session.getUser().getLastName(), message));
+                                session.send(new Message(Action.OK, "SPEAK"));
+                                // Mode DEMOCRATIC : broadcaster le prochain orateur accordé automatiquement
+                                User nextSpeaker = reunion.getCurrentSpeaker();
+                                if (reunion.getType() == ReunionType.DEMOCRATIC && nextSpeaker != null
+                                        && !nextSpeaker.equals(session.getUser())) {
+                                    sessionManager.broadcast(reunion, new Message(Action.BROADCAST,
+                                            "SPEECH_GRANTED", nextSpeaker.getFirstName(), nextSpeaker.getLastName()));
+                                }
                             } catch (IllegalStateException e) {
                                 session.send(new Message(Action.ERROR, "SPEAK", e.getMessage()));
                             }
