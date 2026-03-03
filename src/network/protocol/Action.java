@@ -15,6 +15,7 @@ public enum Action {
     START_MEETING,
     END_MEETING,
     SET_MODERATOR,
+    MUTE_PARTICIPANT,
     REQUEST_SPEAK,
     GRANT_SPEECH,
     SPEAK,

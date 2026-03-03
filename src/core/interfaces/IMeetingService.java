@@ -25,6 +25,7 @@ public interface IMeetingService {
     // Gestion des participants
     void addParticipant(Reunion reunion, User user);
     void removeParticipant(Reunion reunion, User user);
+    void muteParticipant(Reunion reunion, User user);
 
     // Gestion du rôle de modérateur
     void setModerator(Reunion reunion, User user);

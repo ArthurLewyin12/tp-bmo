@@ -19,17 +19,16 @@ public class ChatMessageService implements IChatMessageService {
     }
 
     @Override
-    public ChatMessage save(Reunion reunion, User author, String content) {
+    public void save(Reunion reunion, User author, String content) {
         String id = UUID.randomUUID().toString();
         ChatMessage message = new ChatMessage(id, author, reunion, content, LocalDateTime.now());
         repository.save(id, message);
-        return message;
     }
 
     @Override
     public List<ChatMessage> getHistory(Reunion reunion) {
         return repository.findAll().stream()
-                .filter(m -> m.getReunion().getId().equals(reunion.getId()))
+                .filter(m -> m.reunion().getId().equals(reunion.getId()))
                 .toList();
     }
 }

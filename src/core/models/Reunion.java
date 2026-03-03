@@ -19,6 +19,7 @@ public class Reunion {
     private boolean isOpen;
     private final ReunionType type;
     private final List<User> allowedUsers; // pour les réunions PRIVATE
+    private final List<User> mutedUsers;   // participants mutés
     private String agenda;
     private User currentSpeaker;
 
@@ -35,6 +36,7 @@ public class Reunion {
         this.participants = new ArrayList<>();
         this.speechQueue = new LinkedList<>();
         this.allowedUsers = new ArrayList<>();
+        this.mutedUsers = new ArrayList<>();
         this.isOpen = false;
         this.moderator = organizer; // l'organisateur est animateur par défaut
     }
@@ -52,6 +54,7 @@ public class Reunion {
     public boolean isOpen() { return isOpen; }
     public ReunionType getType() { return type; }
     public List<User> getAllowedUsers() { return allowedUsers; }
+    public List<User> getMutedUsers() { return mutedUsers; }
     public String getAgenda() { return agenda; }
     public User getCurrentSpeaker() { return currentSpeaker; }
 

@@ -46,6 +46,7 @@ public class MessageDispatcher {
             case START_MEETING  -> handleStartMeeting(session, msg);
             case END_MEETING    -> handleEndMeeting(session, msg);
             case SET_MODERATOR  -> handleSetModerator(session, msg);
+            case MUTE_PARTICIPANT -> handleMuteParticipant(session, msg);
             case REQUEST_SPEAK  -> handleRequestSpeak(session, msg);
             case GRANT_SPEECH   -> handleGrantSpeech(session, msg);
             case SPEAK          -> handleSpeak(session, msg);
@@ -287,6 +288,33 @@ public class MessageDispatcher {
 
 
 
+    // MUTE_PARTICIPANT|meetingId|userId
+    private void handleMuteParticipant(ClientSession session, Message msg) {
+        if (!checkLogin(session)) return;
+        reunionService.getMeetingById(msg.getParam(0))
+                .ifPresentOrElse(
+                        reunion -> {
+                            if (!reunionService.canUserPerform(reunion, session.getUser(), Permission.MUTE_PARTICIPANT)) {
+                                session.send(new Message(Action.ERROR, "MUTE_PARTICIPANT", "Permission refusée"));
+                                return;
+                            }
+                            reunion.getParticipants().stream()
+                                    .filter(u -> u.getId().equals(msg.getParam(1)))
+                                    .findFirst()
+                                    .ifPresentOrElse(
+                                            user -> {
+                                                reunionService.muteParticipant(reunion, user);
+                                                session.send(new Message(Action.OK, "MUTE_PARTICIPANT", user.getFirstName(), user.getLastName()));
+                                                sessionManager.broadcast(reunion, new Message(Action.BROADCAST,
+                                                        "PARTICIPANT_MUTED", user.getFirstName(), user.getLastName()));
+                                            },
+                                            () -> session.send(new Message(Action.ERROR, "MUTE_PARTICIPANT", "Utilisateur introuvable dans la réunion"))
+                                    );
+                        },
+                        () -> session.send(new Message(Action.ERROR, "MUTE_PARTICIPANT", "Réunion introuvable"))
+                );
+    }
+
     // REQUEST_SPEAK|meetingId
     private void handleRequestSpeak(ClientSession session, Message msg) {
         if (!checkLogin(session)) return;
@@ -369,10 +397,10 @@ public class MessageDispatcher {
                             }
                             // Format : firstName,lastName,content,sentAt séparés par ";"
                             String result = history.stream()
-                                    .map(m -> m.getAuthor().getFirstName() + "," +
-                                              m.getAuthor().getLastName() + "," +
-                                              m.getContent() + "," +
-                                              m.getSentAt().toString())
+                                    .map(m -> m.author().getFirstName() + "," +
+                                              m.author().getLastName() + "," +
+                                              m.content() + "," +
+                                              m.sentAt().toString())
                                     .collect(Collectors.joining(";"));
                             session.send(new Message(Action.OK, "GET_HISTORY", result));
                         },

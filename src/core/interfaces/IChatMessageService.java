@@ -8,6 +8,6 @@ import java.util.List;
 
 public interface IChatMessageService {
 
-    ChatMessage save(Reunion reunion, User author, String content);
+    void save(Reunion reunion, User author, String content);
     List<ChatMessage> getHistory(Reunion reunion);
 }

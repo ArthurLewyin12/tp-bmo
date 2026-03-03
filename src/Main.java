@@ -11,17 +11,17 @@ import java.io.IOException;
 
 void main() throws IOException {
 
-    // --- Repositories ---
+    // Repositories
     DBRepository<User>        userRepo    = new DBRepository<>();
     DBRepository<Reunion>     reunionRepo = new DBRepository<>();
     DBRepository<ChatMessage> messageRepo = new DBRepository<>();
 
-    // --- Services ---
+    // Services
     UserService        userService        = new UserService(userRepo);
     ReunionService     reunionService     = new ReunionService(reunionRepo);
     ChatMessageService chatMessageService = new ChatMessageService(messageRepo);
 
-    // --- Serveur TCP ---
+    // Serveur TCP
     Server server = new Server(8080, userService, reunionService, chatMessageService);
     server.start();
 }

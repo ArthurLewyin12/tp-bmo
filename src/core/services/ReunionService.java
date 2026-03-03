@@ -63,6 +63,13 @@ public class ReunionService implements IMeetingService {
     }
 
     @Override
+    public void muteParticipant(Reunion reunion, User user) {
+        if (!reunion.getMutedUsers().contains(user)) {
+            reunion.getMutedUsers().add(user);
+        }
+    }
+
+    @Override
     public void setModerator(Reunion reunion, User user) {
         reunion.setModerator(user);
     }
@@ -107,6 +114,9 @@ public class ReunionService implements IMeetingService {
     public void speak(Reunion reunion, User user, String message) {
         if (!reunion.isOpen()) {
             throw new IllegalStateException("La réunion n'est pas ouverte");
+        }
+        if (reunion.getMutedUsers().contains(user)) {
+            throw new IllegalStateException(user.getFirstName() + " est muté");
         }
         boolean isPrivileged = user.equals(reunion.getOrganizer()) || user.equals(reunion.getModerator());
         if (!isPrivileged && !user.equals(reunion.getCurrentSpeaker())) {
